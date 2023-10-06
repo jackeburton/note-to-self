@@ -26,7 +26,7 @@ const JournalEntrySchema = new mongoose.Schema({
     },
     journalEntry: {
         type: String,
-        required: true
+        required: false
     },
     s3Link: {
         type: String,
