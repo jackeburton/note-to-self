@@ -40,13 +40,10 @@ const JournalEntrySchema = new mongoose.Schema({
     }
 })
 
-
 JournalEntrySchema.statics.build = (mongodbData: IJournalEntry) => {
     return new JournalEntryModel(mongodbData)
 }
 
 const JournalEntryModel = mongoose.model<JournalEntryDoc, journalEntryModelInterface>('Service', JournalEntrySchema)
 
-
-
-export { JournalEntryModel }
+export { JournalEntryModel, JournalEntryDoc }

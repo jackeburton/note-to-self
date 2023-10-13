@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+      "target": "ES6", // or your desired ECMAScript version
+      "module": "commonjs",
+      "strict": true,
+      "esModuleInterop": true, // Add this line to enable ES Module interop
+      "skipLibCheck": true, // May be necessary to avoid some strict type checking issues
+      "forceConsistentCasingInFileNames": true,
+      "outDir": "./dist", // Output directory for compiled JavaScript files (you can adjust this)
+      "rootDir": "./", // Source directory for your TypeScript files (you can adjust this)
+    },
+    "include": [
+      "/**/*.ts" // Adjust this to match your project's source code directory structure
+    ],
+    "exclude": [
+      "node_modules"
+    ]
+  }
+  

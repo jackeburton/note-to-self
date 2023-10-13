@@ -1,20 +1,23 @@
-import express, { Request, Response } from 'express'
+import { Router, Request, Response } from 'express'
 import { Upload } from "@aws-sdk/lib-storage";
 import { S3Client } from "@aws-sdk/client-s3";
 import { TextractClient, StartDocumentTextDetectionRequest, StartDocumentTextDetectionCommand } from '@aws-sdk/client-textract';
 import { config } from 'aws-sdk';
-import { JournalEntryModel } from '../models/journalEntries'
-import multer, { Multer } from 'multer';
+import { JournalEntryModel, JournalEntryDoc } from '../models/journalEntries'
+import { Model } from 'mongoose';
+import { UploadResponse } from '../../types/routeTypes';
+import multer from 'multer';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-const awsAccessKey = process.env.ACCESS_KEY_ID || 'default'
-const awsSecretAccessKey = process.env.SECRET_ACCESS_KEY || 'default'
-const region = process.env.REGION || 'default'
-const s3Bucket = process.env.BUCKET_NAME || 'default_bucket'
-const router = express.Router()
-const upload: Multer = multer({ storage: multer.memoryStorage() });
+const router = Router();
+const awsAccessKey = process.env.ACCESS_KEY_ID || 'default';
+const awsSecretAccessKey = process.env.SECRET_ACCESS_KEY || 'default';
+const region = process.env.REGION || 'default';
+const s3Bucket = process.env.BUCKET_NAME || 'default_bucket';
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 const s3Client = new S3Client({ region: process.env.REGION });
 const textract = new TextractClient({ region: process.env.REGION });
 const { v4: uuidv4 } = require('uuid');
@@ -30,7 +33,7 @@ config.update({
 router.post('/upload', upload.single('file'), async (req: Request, res: Response) => {
     console.log('recieved /upload post request')
     const s3ObjectKey: string = uuidv4();
-    let jobId: string | undefined;
+    let jobId: string = '';
     const file = req.file;
     const dateOfEntry: Date = new Date(req.body.dateOfEntry)
 
@@ -47,39 +50,49 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     }
 
     try {
-        jobId = await uploadToTextract(s3ObjectKey);
+        const textractResponse = await uploadToTextract(s3ObjectKey);
         console.log('File uploaded to textract');
-        if (!jobId) {
-            return res.status(500).send('Textract did not return a jobId.');
+        if (!textractResponse) {
+            console.log('Textract did not return a jobId.');
         }
     } catch (error) {
         console.error('Error uploading to textract:', error);
         res.status(500).send('Error uploading to textract');
     }
 
+    const saveResult = await uploadToDb(dateOfEntry, s3ObjectKey, jobId, JournalEntryModel);
+
     console.log(jobId);
     console.log(!jobId);
 
-    const newEntry = new JournalEntryModel({
+    if (saveResult.success) {
+        console.log('Entry saved successfully:', saveResult.responseString);
+        res.status(200).send('Success');
+    } else {
+        console.error('Error saving entry:', saveResult.responseString);
+        res.status(500).send('Error saving entry');
+    }
+
+
+});
+
+async function uploadToDb(dateOfEntry: Date, s3ObjectKey: string, jobId: string, journalEntryModel: Model<JournalEntryDoc>): Promise<UploadResponse> {
+    const newEntry = new journalEntryModel({
         dateOfEntry: dateOfEntry,
         journalEntry: '',
         s3Link: `${s3Bucket}/${s3ObjectKey}`,
         textractJobId: jobId,
     });
 
-    newEntry.save()
-        .then((savedEntry) => {
-            console.log('Entry saved successfully');
-            res.status(200).send('Success');
-        })
-        .catch((err) => {
-            console.error('Error saving entry:', err);
-            res.status(500).send('Error saving entry');
-        });
+    try {
+        await newEntry.save();
+        return { success: true, responseString: 'Entry uploaded to db' };
+    } catch (err) {
+        return { success: false, responseString: 'Error uploading entry to db' };
+    }
+}
 
-});
-
-async function uploadToTextract(s3ObjectKey: string): Promise<string | undefined> {
+async function uploadToTextract(s3ObjectKey: string): Promise<UploadResponse> {
     const textractParams: StartDocumentTextDetectionRequest = {
         DocumentLocation: {
             S3Object: {
@@ -88,25 +101,24 @@ async function uploadToTextract(s3ObjectKey: string): Promise<string | undefined
             },
         },
     };
-    const startDocumentTextDetectionCommand = new StartDocumentTextDetectionCommand(textractParams);
 
     try {
+        const startDocumentTextDetectionCommand = new StartDocumentTextDetectionCommand(textractParams);
         const textractResponse = await textract.send(startDocumentTextDetectionCommand);
 
         if (textractResponse.JobId) {
-            console.log('jobid', textractResponse.JobId)
-            return textractResponse.JobId;
+            return { success: true, responseString: textractResponse.JobId };
         } else {
-            console.error('Textract response did not include a JobId.');
-            return undefined;
+            console.error('Textract response did not include a Job ID.');
+            return { success: true, responseString: '' };
         }
     } catch (error) {
         console.error('Error uploading to Textract:', error);
-        throw error;
+        return { success: false, responseString: 'Error uploading to Textract' };
     }
 }
 
-async function uploadToS3(file: Express.Multer.File, objectKey: string): Promise<Upload> {
+async function uploadToS3(file: Express.Multer.File, objectKey: string): Promise<UploadResponse> {
     const params = {
         Bucket: s3Bucket,
         Key: objectKey,
@@ -118,8 +130,13 @@ async function uploadToS3(file: Express.Multer.File, objectKey: string): Promise
         params
     });
 
-    await upload.done();
-    return upload;
+    try {
+        await upload.done();
+        return { success: true, responseString: 'Entry uploaded to s3' };
+    } catch (err) {
+        console.error('Error saving entry:', err);
+        return { success: false, responseString: 'Error uploading to s3' };
+    }
 }
 
-export { router as journalEntryRouter }
+export { router as journalEntryRouter, uploadToDb }
