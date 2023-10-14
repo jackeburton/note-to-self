@@ -1,13 +1,13 @@
 import { Router, Request, Response } from 'express'
-import { Upload } from "@aws-sdk/lib-storage";
-import { S3Client } from "@aws-sdk/client-s3";
+import { PutObjectCommand, PutObjectCommandInput, S3Client } from "@aws-sdk/client-s3";
 import { TextractClient, StartDocumentTextDetectionRequest, StartDocumentTextDetectionCommand } from '@aws-sdk/client-textract';
-import { config } from 'aws-sdk';
+import { ConfigurationOptions, config } from 'aws-sdk';
 import { JournalEntryModel, JournalEntryDoc } from '../models/journalEntries'
 import { Model } from 'mongoose';
 import { UploadResponse } from '../../types/routeTypes';
 import multer from 'multer';
 import * as dotenv from 'dotenv';
+import { GlobalConfigInstance } from 'aws-sdk/lib/config';
 
 dotenv.config();
 
@@ -22,27 +22,37 @@ const s3Client = new S3Client({ region: process.env.REGION });
 const textract = new TextractClient({ region: process.env.REGION });
 const { v4: uuidv4 } = require('uuid');
 
-config.update({
+const awsConfig = {
     region: region,
     credentials: {
         accessKeyId: awsAccessKey,
         secretAccessKey: awsSecretAccessKey,
     },
-});
+}
+
+configureAWS(config, awsConfig)
+
+function configureAWS(config:GlobalConfigInstance, options:ConfigurationOptions){
+    config.update(options)
+}
 
 router.post('/upload', upload.single('file'), async (req: Request, res: Response) => {
     console.log('recieved /upload post request')
-    const s3ObjectKey: string = uuidv4();
     let jobId: string = '';
-    const file = req.file;
+    const s3ObjectKey: string =  uuidv4()
     const dateOfEntry: Date = new Date(req.body.dateOfEntry)
 
-    if (!file) {
+    if (!req.file) {
         return res.status(400).send('No file uploaded.');
     }
 
     try {
-        const s3result = await uploadToS3(file, s3ObjectKey);
+        const s3UploadParams = {
+            Bucket: s3Bucket,
+            Key: s3ObjectKey,
+            body: req.file,
+        }
+        const s3result = await uploadToS3(s3UploadParams, s3Client);
         console.log('File uploaded to S3');
     } catch (error) {
         console.error('Error uploading to S3:', error);
@@ -118,25 +128,18 @@ async function uploadToTextract(s3ObjectKey: string): Promise<UploadResponse> {
     }
 }
 
-async function uploadToS3(file: Express.Multer.File, objectKey: string): Promise<UploadResponse> {
-    const params = {
-        Bucket: s3Bucket,
-        Key: objectKey,
-        Body: file.buffer
-    };
+async function uploadToS3(s3UploadParams:PutObjectCommandInput, s3Client:S3Client): Promise<UploadResponse> {
 
-    const upload = new Upload({
-        client: s3Client,
-        params
-    });
+    const command = new PutObjectCommand(
+        s3UploadParams
+    );
 
     try {
-        await upload.done();
+        await s3Client.send(command);
         return { success: true, responseString: 'Entry uploaded to s3' };
     } catch (err) {
-        console.error('Error saving entry:', err);
         return { success: false, responseString: 'Error uploading to s3' };
     }
 }
 
-export { router as journalEntryRouter, uploadToDb }
+export { router as journalEntryRouter, uploadToDb, uploadToS3, configureAWS }

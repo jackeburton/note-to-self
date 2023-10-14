@@ -15,6 +15,7 @@ type JournalEntryModelType = {
     journalEntry: string;
     s3Link: string;
     textractJobId: string;
-  };
+};
+
 
 export { UploadResponse, JournalEntryModelType }

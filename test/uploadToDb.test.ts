@@ -2,7 +2,6 @@ import { uploadToDb } from '../backend/routes/journalEntry';
 import { JournalEntryModel } from '../backend/models/journalEntries';
 import mongoose, { Model } from 'mongoose';
 
-
 const uri: string = (process.env.URI || 'default')
 
 beforeAll(async () => {
@@ -24,9 +23,7 @@ describe('uploadToDb', () => {
             textractJobId: 'mock_textract_id',
         }));
 
-        const dateOfEntry = new Date();
-        const s3ObjectKey = 'mock_obj_key';
-        const jobId = 'mock_job_id';
+        const { dateOfEntry, s3ObjectKey, jobId } = createTestEntryData();
 
         const dbResult = await uploadToDb(dateOfEntry, s3ObjectKey, jobId, JournalEntryModel);
 
@@ -37,9 +34,8 @@ describe('uploadToDb', () => {
 
     it('should try to upload data to the database and return a fail response', async () => {
         JournalEntryModel.prototype.save = jest.fn().mockRejectedValue(new Error('Database error'));
-        const dateOfEntry = new Date();
-        const s3ObjectKey = 'mock_obj_key';
-        const jobId = 'mock_job_id';
+
+        const { dateOfEntry, s3ObjectKey, jobId } = createTestEntryData();
 
         const dbResult = await uploadToDb(dateOfEntry, s3ObjectKey, jobId, JournalEntryModel);
 
@@ -48,3 +44,10 @@ describe('uploadToDb', () => {
         expect(dbResult.responseString).toBe('Error uploading entry to db');
     });
 })
+
+function createTestEntryData() {
+    const dateOfEntry = new Date();
+    const s3ObjectKey = 'mock_obj_key';
+    const jobId = 'mock_job_id';
+    return { dateOfEntry, s3ObjectKey, jobId }
+  }

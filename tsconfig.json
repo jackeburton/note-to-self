@@ -6,6 +6,7 @@
       "esModuleInterop": true, // Add this line to enable ES Module interop
       "skipLibCheck": true, // May be necessary to avoid some strict type checking issues
       "forceConsistentCasingInFileNames": true,
+      "allowSyntheticDefaultImports": true,
       "outDir": "./dist", // Output directory for compiled JavaScript files (you can adjust this)
       "rootDir": "./", // Source directory for your TypeScript files (you can adjust this)
     },
