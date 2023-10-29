@@ -1,10 +1,10 @@
 import { Router, Request, Response } from 'express'
 import { PutObjectCommand, PutObjectCommandInput, S3Client } from "@aws-sdk/client-s3";
-import { TextractClient, StartDocumentTextDetectionRequest, StartDocumentTextDetectionCommand } from '@aws-sdk/client-textract';
+import { TextractClient, StartDocumentTextDetectionRequest, StartDocumentTextDetectionCommand, GetDocumentTextDetectionCommand, GetDocumentTextDetectionRequest } from '@aws-sdk/client-textract';
 import { ConfigurationOptions, config } from 'aws-sdk';
 import { JournalEntryModel, JournalEntryDoc } from '../models/journalEntries'
 import { Model } from 'mongoose';
-import { UploadResponse } from '../../types/routeTypes';
+import { APIResponse, APIDataResponse } from '../../types/routeTypes';
 import multer from 'multer';
 import * as dotenv from 'dotenv';
 import { GlobalConfigInstance } from 'aws-sdk/lib/config';
@@ -53,27 +53,25 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
             body: req.file,
         }
         const s3result = await uploadToS3(s3UploadParams, s3Client);
-        console.log('File uploaded to S3');
+        console.log('File uploaded to S3 :', s3result);
     } catch (error) {
         console.error('Error uploading to S3:', error);
         res.status(500).send('Error uploading to S3');
     }
 
     try {
-        const textractResponse = await uploadToTextract(s3ObjectKey);
-        console.log('File uploaded to textract');
-        if (!textractResponse) {
+        const textractJobId = await uploadToTextract(s3ObjectKey);
+        if (!textractJobId) {
             console.log('Textract did not return a jobId.');
+        } else {
+            console.log('File uploaded to textract:', textractJobId);
         }
     } catch (error) {
         console.error('Error uploading to textract:', error);
         res.status(500).send('Error uploading to textract');
     }
 
-    const saveResult = await uploadToDb(dateOfEntry, s3ObjectKey, jobId, JournalEntryModel);
-
-    console.log(jobId);
-    console.log(!jobId);
+    const saveResult = await uploadToDb(dateOfEntry,'', s3ObjectKey, jobId, JournalEntryModel);
 
     if (saveResult.success) {
         console.log('Entry saved successfully:', saveResult.responseString);
@@ -83,13 +81,40 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
         res.status(500).send('Error saving entry');
     }
 
-
 });
 
-async function uploadToDb(dateOfEntry: Date, s3ObjectKey: string, jobId: string, journalEntryModel: Model<JournalEntryDoc>): Promise<UploadResponse> {
+router.get('/check-textract-status', async (req: Request, res: Response) => {
+    // get the jobid for all mongo entries with blank text fields
+    const getEntriesResponse = await getEntriesWithNoText(JournalEntryModel)
+    
+    if (!getEntriesResponse.success) {
+        console.error('Error getting entries:', getEntriesResponse.responseString);
+        return res.status(500).send('Error getting entries');
+    }
+    
+    // check the jobids to see if they have finished processing - store the number in a count
+    const countOfEntries = getEntriesResponse.responseData.length
+    console.log(getEntriesResponse.responseData)
+    console.log(`Found ${countOfEntries} entries with no text. Processing jobIds`)
+    const entriesWithJobId = getEntriesResponse.responseData.filter((item: JournalEntryDoc) => item.textractJobId !== '');
+    console.log(`Found ${entriesWithJobId.length} entries with jobId. Processing textract jobs`)
+    
+    // for the ones that have finished - upload the text fields to the mongo db entry
+    for (const entry of entriesWithJobId){
+        const textractJobStatus = await checkTextractJobStatus(entry['textractJobId'])
+        if (textractJobStatus.success){
+            console.log(textractJobStatus)
+        } else {
+            console.log(`could not find textract job for job with id: ${entry['textractJobId']}`)
+        }
+    }
+    
+});
+
+async function uploadToDb(dateOfEntry: Date,journalEntry: string, s3ObjectKey: string, jobId: string, journalEntryModel: Model<JournalEntryDoc>): Promise<APIResponse> {
     const newEntry = new journalEntryModel({
         dateOfEntry: dateOfEntry,
-        journalEntry: '',
+        journalEntry: journalEntry,
         s3Link: `${s3Bucket}/${s3ObjectKey}`,
         textractJobId: jobId,
     });
@@ -102,7 +127,32 @@ async function uploadToDb(dateOfEntry: Date, s3ObjectKey: string, jobId: string,
     }
 }
 
-async function uploadToTextract(s3ObjectKey: string): Promise<UploadResponse> {
+async function getEntriesWithNoText(journalEntryModel: Model<JournalEntryDoc>): Promise<APIDataResponse>{
+    try{
+        const journalEntries = await journalEntryModel.find({journalEntry: ''}).exec();
+        return { success: true, responseData: journalEntries };
+    } catch (error){
+        return { success: false, responseString: 'Error querying MongoDB'};
+    }
+    
+}
+
+async function checkTextractJobStatus(textractJobId: string): Promise<APIDataResponse>{
+    const textractParams: GetDocumentTextDetectionRequest = {
+        JobId: textractJobId,
+      };
+    try{
+        const getDocumentTextDetectionCommand = new GetDocumentTextDetectionCommand(textractParams);
+        const textractResponse = await textract.send(getDocumentTextDetectionCommand);
+        console.log(textractResponse)
+        return { success: true, responseData: textractResponse};
+    }catch(error){
+        console.log(error)
+        return { success: false, responseString: 'Error querying Textract'};
+    }
+}
+
+async function uploadToTextract(s3ObjectKey: string): Promise<APIResponse> {
     const textractParams: StartDocumentTextDetectionRequest = {
         DocumentLocation: {
             S3Object: {
@@ -128,7 +178,7 @@ async function uploadToTextract(s3ObjectKey: string): Promise<UploadResponse> {
     }
 }
 
-async function uploadToS3(s3UploadParams:PutObjectCommandInput, s3Client:S3Client): Promise<UploadResponse> {
+async function uploadToS3(s3UploadParams:PutObjectCommandInput, s3Client:S3Client): Promise<APIResponse> {
 
     const command = new PutObjectCommand(
         s3UploadParams

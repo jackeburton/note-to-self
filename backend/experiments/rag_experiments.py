@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 import pinecone
 from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain import Pinecone
+from langchain.vectorstores import Pinecone
 
 
 def main():

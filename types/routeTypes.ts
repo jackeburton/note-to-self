@@ -1,14 +1,20 @@
-type UploadSuccessResponse = {
+type APISuccessResponse = {
     success: true;
     responseString: string;
 };
 
-type UploadErrorResponse = {
+type APIErrorResponse = {
     success: false;
     responseString: string;
 };
 
-type UploadResponse = UploadSuccessResponse | UploadErrorResponse;
+type APIResponseWithData = {
+    success: true;
+    responseData: any;
+};
+
+type APIResponse = APISuccessResponse | APIErrorResponse;
+type APIDataResponse = APIResponseWithData | APIErrorResponse;
 
 type JournalEntryModelType = {
     dateOfEntry: Date;
@@ -18,4 +24,4 @@ type JournalEntryModelType = {
 };
 
 
-export { UploadResponse, JournalEntryModelType }
+export { APIResponse, APIDataResponse,  JournalEntryModelType }
