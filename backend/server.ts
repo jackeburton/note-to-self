@@ -5,12 +5,23 @@ import { journalEntryRouter } from './routes/journalEntry';
 // import { pythonRouter } from './routes/python';
 import { exec } from 'child_process';
 import path from 'path';
+import cors from 'cors'; 
 
 dotenv.config();
 
 const app = express();
 const port = parseInt(process.env.PORT || '3000');
 const uri = process.env.URI || 'default';
+
+
+const allowedOrigins = ['http://localhost:8080/']
+
+const corsOptions: cors.CorsOptions = {
+	origin: allowedOrigins
+};
+
+app.use(cors());
+
 app.use(journalEntryRouter);
 
 mongoose.connect(uri).then(
