@@ -3,8 +3,6 @@ import mongoose from "mongoose";
 interface IJournalEntry {
     dateOfEntry: Date;
     journalEntry: string;
-    s3Link: string;
-    textractJobId: string;
 }
 
 interface journalEntryModelInterface extends mongoose.Model<JournalEntryDoc> {
@@ -14,8 +12,6 @@ interface journalEntryModelInterface extends mongoose.Model<JournalEntryDoc> {
 interface JournalEntryDoc extends mongoose.Document {
     dateOfEntry: Date;
     journalEntry: string;
-    s3Link: string;
-    textractJobId: string;
 }
 
 const JournalEntrySchema = new mongoose.Schema({
@@ -28,16 +24,6 @@ const JournalEntrySchema = new mongoose.Schema({
         type: String,
         required: false
     },
-    s3Link: {
-        type: String,
-        required: false,
-        default: '',
-    },
-    textractJobId: {
-        type: String,
-        required: false,
-        default: '',
-    }
 })
 
 JournalEntrySchema.statics.build = (mongodbData: IJournalEntry) => {

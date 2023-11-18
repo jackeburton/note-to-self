@@ -1,10 +1,7 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import { journalEntryRouter } from './routes/journalEntry';
-// import { pythonRouter } from './routes/python';
-import { exec } from 'child_process';
-import path from 'path';
+import { uploadJournalEntryRouter } from './routes/uploadJournalEntry';
 import cors from 'cors'; 
 
 dotenv.config();
@@ -22,33 +19,12 @@ const corsOptions: cors.CorsOptions = {
 
 app.use(cors());
 
-app.use(journalEntryRouter);
+app.use(uploadJournalEntryRouter);
 
 mongoose.connect(uri).then(
     () => { console.log('connected to db'); },
     (err) => { console.error('Connection error:', err); }
 );
-
-/*
-
-const pythonScriptPath = path.join(__dirname, 'experiments', 'python_api.py');
-
-const pythonProcess = exec(`python3 ${pythonScriptPath}`, (error, stdout, stderr) => {
-    if (error) {
-        console.error(`Error: ${error.message}`);
-        return;
-    }
-    if (stderr) {
-        console.error(`stderr: ${stderr}`);
-    }
-    console.log(`stdout: ${stdout}`);
-});
-
-pythonProcess.on('close', (code) => {
-    console.log(`Python process exited with code ${code}`);
-});
-
-*/
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);

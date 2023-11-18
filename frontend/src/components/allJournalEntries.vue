@@ -25,8 +25,21 @@ onMounted(() => {
 </script>
 
 <template>
-  <div v-if="apiData">
-	<h2>Api data</h2>
-	<p>{{ apiData }}</p>
-  </div>
+	<div class="styled-div" v-if="apiData">
+		<h2>All entries and dates</h2>
+		<ul>
+			<li v-for="(item, index) in apiData" :key="index">
+				{{ item.dateOfEntry }} - {{ item.journalEntry }}
+			</li>
+		</ul>
+	</div>
 </template>
+
+<style scoped>
+	.styled-div {
+		border: 2px solid #000; /* solid black border */
+		border-radius: 10px; /* rounded corners */
+		padding: 20px; /* padding inside the div */
+		margin: 20px; /* padding inside the div */
+	}
+</style>
