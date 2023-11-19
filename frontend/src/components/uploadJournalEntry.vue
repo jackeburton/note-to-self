@@ -53,7 +53,6 @@ export default {
             <input type="date" v-model="uploadDate" />
             <button type="submit">Upload</button>
         </form>
-    
         {{apiData}}
     </div>
 </template>

@@ -114,12 +114,6 @@ router.post('/upload-journal-entry', upload.single('file'), async (req: Request,
 
 });
 
-router.get('/get-all-populated-entries', async (req: Request, res: Response) => {
-    console.log('getting everything')
-    const getEntriesResponse = await JournalEntryModel.find({journalEntry: { $ne: '' }}).exec();
-    res.status(200).send(getEntriesResponse)
-});
-
 function put(url: string, data: Buffer) {
     return new Promise((resolve, reject) => {
         const req = https.request(

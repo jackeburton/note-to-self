@@ -1,11 +1,12 @@
 <script>
-    import allJournalEntries from './components/allJournalEntries.vue'
+    import allJournalEntries from './components/allJournalEntries.vue';
     import uploadJournalEntries from './components/uploadJournalEntries.vue';
-
+	import dailyAnalysis from './components/dailyAnalysis.vue';
     export default {
         components: {
             'all-journal-entries': allJournalEntries,
-            'upload-journal-entries': uploadJournalEntries
+            'upload-journal-entries': uploadJournalEntries,
+			'daily-analysis': dailyAnalysis,
         }
     }   
 </script>
@@ -24,7 +25,7 @@
     
 
                                                                                                                            
-***** *     **                                                                  *******              ***        ***   
+    ***** *     **                                                                  *******              ***        ***   
   ******  **    **** *                *                     *                      *       ***             ***     ** ***  
  **   *  * **    ****                **                    **                     *         **              **    **   *** 
 *    *  *  **    * *                 **                    **                     **        *               **    **       
@@ -64,8 +65,9 @@
  ##                                                   n                      n  \)                                         
                                                       u                      u                                             
                                                       s                      s                                                
-                                                      <upload-journal-entries/>
-    <all-journal-entries />
+	<upload-journal-entries/>
+	<daily-analysis />
+	<all-journal-entries />
 </template>
 
 <style>

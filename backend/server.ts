@@ -2,6 +2,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { uploadJournalEntryRouter } from './routes/uploadJournalEntry';
+import { getEntriesRouter } from './routes/getEntries'
 import cors from 'cors'; 
 
 dotenv.config();
@@ -19,7 +20,7 @@ const corsOptions: cors.CorsOptions = {
 
 app.use(cors());
 
-app.use(uploadJournalEntryRouter);
+app.use(uploadJournalEntryRouter, getEntriesRouter);
 
 mongoose.connect(uri).then(
     () => { console.log('connected to db'); },
